@@ -1,0 +1,13 @@
+﻿@model Google.Apis.Calendar.v3.Data.Events
+@{
+    ViewBag.Title = "Calendar";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Eventos próximos</h2>
+<ul>
+    @foreach (var e in Model.Items)
+    {
+        <li>@e.Summary, @e.Start.DateTime.ToString()</li>
+    }
+</ul>
