@@ -8,6 +8,6 @@
 <ul>
     @foreach (var e in Model.Items)
     {
-        <li>@e.Summary, @e.Start.DateTime.ToString()</li>
+        <li>@e.Summary, @e.Id, @e.Start.DateTime.ToString()</li>
     }
 </ul>

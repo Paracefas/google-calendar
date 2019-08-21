@@ -1,0 +1,17 @@
+﻿@{
+    ViewBag.Title = "AddEvent";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>AddEvent</h2>
+<form method="POST">
+    Summary: <input type="text" name="Summary" />
+             <br />
+    Start: <input type="datetime" name="Start" />
+           <br />
+    End: <input type="datetime" name="End" />
+         <br />
+    Location <input type="text" name="Location" />
+             <br />
+    <button type="submit">Add</button>
+</form>
