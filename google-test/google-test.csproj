@@ -197,6 +197,9 @@
     <Content Include="Views\Home\IndexAsync.cshtml" />
     <Content Include="Views\Home\AddEvent.cshtml" />
     <Content Include="Views\Home\DeleteEvent.cshtml" />
+    <Content Include="Views\Home\AddCalendar.cshtml" />
+    <Content Include="Views\Home\DeleteCalendar.cshtml" />
+    <Content Include="Views\Home\RenderCalendar.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

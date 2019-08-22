@@ -16,6 +16,43 @@ using WebMatrix.WebData;
 
 namespace google_test.Controllers
 {
+    class OptionalMonad<T>
+    {
+        private T value;
+        public T Value { get
+            {
+                return Exists ? value : throw new InvalidOperationException();
+            } }
+        public bool Exists { get; private set; }
+        public OptionalMonad(T value)
+        {
+            this.value = value;
+            Exists = true;
+        }
+        public OptionalMonad()
+        {
+            Exists = false;
+        }
+        public static explicit operator T(OptionalMonad<T> right)
+        {
+            return right.Value;
+        }
+        public static implicit operator OptionalMonad<T>(T right)
+        {
+            return new OptionalMonad<T>(right);
+        }
+        public override bool Equals(object obj)
+        {
+            if(obj is OptionalMonad<T>)
+                return Equals((OptionalMonad<T>)obj);
+            return false;
+        }
+        public bool Equals(OptionalMonad<T> right)
+        {
+            return Exists && right.Exists ? 
+                Equals(value, right.value) : false;
+        }
+    }
     internal class Time : Google.Apis.Util.IClock
     {
         public DateTime Now { get { return DateTime.Now; } }
@@ -31,7 +68,7 @@ namespace google_test.Controllers
         /// <c>res</c> almacena la autorización de google, de haber fallado será null.
         /// </summary>
         static private AuthResult res;
-
+        
         /// <summary>
         /// De haber fallado la autentificación lo rediccionará a RedirectUri,
         /// en cualquier otro caso listará los próximos 10 eventos desde el
@@ -60,40 +97,49 @@ namespace google_test.Controllers
             } else
             {
                 /**
-                *   service almacena el servicio del calendario, este 
-                *   requiere de las credenciales previamente checkeadas 
-                *   y el nombre de la App (el mismo de https://console.developer.google.com).
-                */
-                var service = new CalendarService(new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = res.Credential,
-                    ApplicationName = "Albor"
-                });
-                
-                /**
                  *  service contiene todo a lo que le dimos acceso al 
                  *  client (la App). Si se tiene acceso a lectura se podrá
                  *  listar el calendario que gustemos, en este caso "primary".
                  */
-                var list = service.Events.List("primary");
-                //  Establecemos desde que momento deseamos listar.
-                list.TimeMin = DateTime.Now;
-                //  No mostramos los items eliminados.
-                list.ShowDeleted = false;
-                //  Mostramos elementos únicos.
-                list.SingleEvents = true;
-                //  Establecemos el límite de la lista.
-                list.MaxResults = 10;
+                var service = new CalendarService(new BaseClientService.Initializer
+                    {
+                        HttpClientInitializer = res.Credential,
+                        ApplicationName = "Albor"
+                    });
+                var calendars = service.CalendarList.List().Execute();
+                List<SelectListItem> list = new List<SelectListItem>();
                 
-                //  Ordenamos por fecha.
-                list.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
-
-                //  Ejecutamos el listado.
-                Events events = list.Execute();
-
-                //  Enviamos los eventos a la vista.
-                return View(events);
+                foreach (var item in calendars.Items)
+                    list.Add(new SelectListItem { Text = item.Summary, Value = item.Id });
+                ViewBag.Options = list;
+                return View();
+                
             }
+        }
+        public ActionResult RenderCalendar(string Calendar)
+        {
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = res.Credential,
+                ApplicationName = "Albor"
+            });
+            var list = service.Events.List(Calendar);
+            //  Establecemos desde que momento deseamos listar.
+            list.TimeMin = DateTime.Now;
+            //  No mostramos los items eliminados.
+            list.ShowDeleted = false;
+            //  Mostramos elementos únicos.
+            list.SingleEvents = true;
+            //  Establecemos el límite de la lista.
+            list.MaxResults = 10;
+
+            //  Ordenamos por fecha.
+            list.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+
+            //  Ejecutamos el listado.
+            Events events = list.Execute();
+
+            return PartialView(events);
         }
 
         /// <summary>
@@ -113,11 +159,11 @@ namespace google_test.Controllers
         /// <returns></returns>
         [HttpPost]
         public ActionResult AddEvent(
-                string Summary, string Start, string End, string Location
+                string Calendar, string Summary, string Start, string End, string Location
             )
         {
-            if (res == null)
-                return RedirectToAction("IndexAsync");
+            //if (res == null)
+            //    return RedirectToAction("IndexAsync");
             var service = new CalendarService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = res.Credential,
@@ -130,22 +176,76 @@ namespace google_test.Controllers
                 Start = new EventDateTime { DateTimeRaw = Start },
                 End = new EventDateTime { DateTimeRaw = End },
                 Location = Location
-            }, "primary").Execute();
+            }, Calendar).Execute();
             return RedirectToAction("IndexAsync");
         }
         public ActionResult DeleteEvent() => View();
 
         [HttpPost]
-        public ActionResult DeleteEvent(string calendarId, string eventId)
+        public ActionResult DeleteEvent(string calendarId, string eventSummary)
         {
             var service = new CalendarService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = res.Credential,
                 ApplicationName = "Albor"
             });
-            service.Events.Delete(calendarId, eventId).Execute();
+            service.Events.Delete(calendarId, (string)findEventBySummary(eventSummary)).Execute();
             return RedirectToAction("IndexAsync");
         }
 
+        public ActionResult AddCalendar() => View();
+
+        [HttpPost]
+        public ActionResult AddCalendar(string Summary, string Description)
+        {
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = res.Credential,
+                ApplicationName = "Albor"
+            });
+            service.Calendars.Insert(new Calendar
+            {
+                Summary = Summary,
+                Description = Description ?? ""
+            }).Execute();
+            return RedirectToAction("IndexAsync");
+        }
+
+        public ActionResult DeleteCalendar() => View();
+
+        [HttpPost]
+        public ActionResult DeleteCalendar(string calendarSummary)
+        {
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = res.Credential,
+                ApplicationName = "Albor"
+            });
+            service.Calendars.Delete((string)findCalendarBySummary(calendarSummary)).Execute();
+            return RedirectToAction("IndexAsync");
+        }
+
+        private OptionalMonad<string> findEventBySummary(string Summary)
+        {
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = res.Credential,
+                ApplicationName = "Albor"
+            });
+            foreach (var item in service.Events.List("primary").Execute().Items)
+                if (item.Summary == Summary) return item.Id;
+            return new OptionalMonad<string>();
+        }
+        private OptionalMonad<string> findCalendarBySummary(string Summary)
+        {
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = res.Credential,
+                ApplicationName = "Albor"
+            });
+            foreach (var item in service.CalendarList.List().Execute().Items)
+                if (item.Summary == Summary) return item.Id;
+            return new OptionalMonad<string>();
+        }
     }
 }

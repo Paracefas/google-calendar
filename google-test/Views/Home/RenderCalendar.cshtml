@@ -1,0 +1,7 @@
+﻿@model Google.Apis.Calendar.v3.Data.Events
+<ul>
+    @foreach (var e in Model.Items)
+    {
+        <li>@e.Summary, @e.Start.DateTime.ToString()</li>
+    }
+</ul>
