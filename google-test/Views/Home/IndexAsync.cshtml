@@ -3,8 +3,22 @@
     ViewBag.Title = "Calendar";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<script type="text/javascript">
+    function loadPartial() {
+        var name = $("#selectPartial").val();
+        alert(name);
+        $("#partial").load('/Home/RenderCalendar/?Calendar=' + name);
+    }
+</script>
 
-<h2>Eventos próximos</h2>
-@Html.DropDownListFor(x => x.Items, (IEnumerable<SelectListItem>)ViewBag.Options)
+<select id="selectPartial" onchange="loadPartial()">
+    @foreach (var item in Model.Items)
+    {
+        <option value="@item.Id">@item.Summary</option>
+    }
+</select>
 
-<br />
+<div id="partial">
+    <div id="sd">
+    </div>
+</div>
